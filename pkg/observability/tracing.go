@@ -57,7 +57,7 @@ func SetupTracing(cfg config.ObservabilityConfig) (ShutdownFunc, error) {
 
 	res, err := resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL,
+		resource.NewWithAttributes("",
 			semconv.ServiceName(cfg.ServiceName),
 		),
 	)
