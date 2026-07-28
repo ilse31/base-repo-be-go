@@ -29,9 +29,10 @@ func New(
 	m mailer.Mailer,
 	resetURL string,
 	v *validator.Validate,
+	isProduction bool,
 ) *Module {
 	service := application.NewAuthService(userRepo, authRepo, jwtManager, m, resetURL)
-	handler := presentation.NewAuthHandler(service, v)
+	handler := presentation.NewAuthHandler(service, v, isProduction)
 	return &Module{handler: handler}
 }
 

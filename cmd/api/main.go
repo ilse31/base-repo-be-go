@@ -7,14 +7,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	sentryecho "github.com/getsentry/sentry-go/echo"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"go.uber.org/zap"
 
+	_ "github.com/ilse31/base-repo-be-go/docs"
 	"github.com/ilse31/base-repo-be-go/internal/container"
 	"github.com/ilse31/base-repo-be-go/internal/infrastructure/database"
 	"github.com/ilse31/base-repo-be-go/internal/infrastructure/health"
@@ -33,11 +37,32 @@ import (
 	"github.com/ilse31/base-repo-be-go/pkg/scheduler"
 )
 
+// @title Go Clean Architecture API
+// @version 1.0
+// @description Reusable Go Echo REST API Template following Clean Architecture.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@example.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Configuration validation failed: %v", err)
 	}
 
 	// Initialize logger
@@ -112,14 +137,73 @@ func main() {
 	if cfg.Observability.SentryEnabled {
 		e.Use(sentryecho.New(sentryecho.Options{}))
 	}
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:     true,
+		LogStatus:  true,
+		LogMethod:  true,
+		LogLatency: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			logger.Info("HTTP Request",
+				zap.String("method", v.Method),
+				zap.String("uri", v.URI),
+				zap.Int("status", v.Status),
+				zap.Duration("latency", v.Latency),
+			)
+			return nil
+		},
+	}))
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+
+	// Security Middlewares: CORS, Secure Headers, Rate Limiter, and CSRF Protection
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     cfg.Server.AllowedOrigins,
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, echo.HeaderXCSRFToken},
+		AllowCredentials: true,
+	}))
+
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:         "1; mode=block",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		HSTSMaxAge:            3600,
+		ContentSecurityPolicy: "default-src 'self'",
+	}))
+
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+
+	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
+		CookieName:     "_csrf",
+		CookiePath:     "/",
+		CookieSecure:   cfg.Server.Env == "production",
+		CookieHTTPOnly: false, // Accessible by frontend JS to set X-CSRF-Token header
+		CookieSameSite: http.SameSiteStrictMode,
+		TokenLookup:    "header:" + echo.HeaderXCSRFToken,
+		Skipper: func(c echo.Context) bool {
+			// Skip CSRF for safe HTTP methods, health check, or swagger docs
+			if c.Request().Method == http.MethodGet ||
+				c.Request().Method == http.MethodHead ||
+				c.Request().Method == http.MethodOptions ||
+				c.Path() == "/health" ||
+				strings.HasPrefix(c.Path(), "/swagger") {
+				return true
+			}
+			// Skip CSRF if request uses Bearer token authorization
+			authHeader := c.Request().Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				return true
+			}
+			return false
+		},
+	}))
+
 	e.HTTPErrorHandler = mw.HTTPErrorHandler
 
 	e.GET("/health", func(c echo.Context) error {
 		return response.OKWithMessage(c, "ok", map[string]string{"status": "ok"})
 	})
+
+	// Swagger UI route
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// Compose modules and mount routes
 	appContainer := container.New(container.Deps{
@@ -129,6 +213,7 @@ func main() {
 		Mailer:           mailSender,
 		FrontendResetURL: cfg.Mail.FrontendResetURL,
 		Validator:        v,
+		IsProduction:     cfg.Server.Env == "production",
 	})
 	appContainer.RegisterRoutes(e)
 

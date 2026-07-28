@@ -35,3 +35,7 @@ Thumbs.db
 # Build
 /bin/
 /dist/
+/tmp/
+build-errors.log
+
+.codegraph/

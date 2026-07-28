@@ -3,6 +3,7 @@ package validation
 import (
 	"errors"
 	"fmt"
+	"unicode"
 
 	"github.com/go-playground/validator/v10"
 
@@ -10,7 +11,28 @@ import (
 )
 
 func New() *validator.Validate {
-	return validator.New()
+	v := validator.New()
+	_ = v.RegisterValidation("password_complexity", validatePasswordComplexity)
+	return v
+}
+
+func validatePasswordComplexity(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	if len(password) < 8 {
+		return false
+	}
+	var hasUpper, hasLower, hasDigit bool
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		}
+	}
+	return hasUpper && hasLower && hasDigit
 }
 
 func ToAppError(err error) *apperrors.AppError {
@@ -42,6 +64,8 @@ func defaultMessage(fe validator.FieldError) string {
 		return fmt.Sprintf("%s must be one of: %s", fe.Field(), fe.Param())
 	case "uuid":
 		return fmt.Sprintf("%s must be a valid UUID", fe.Field())
+	case "password_complexity":
+		return fmt.Sprintf("%s must be at least 8 characters long and contain uppercase, lowercase, and a number", fe.Field())
 	default:
 		return fmt.Sprintf("%s is invalid", fe.Field())
 	}

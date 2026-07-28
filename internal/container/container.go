@@ -16,6 +16,7 @@ import (
 	authdomain "github.com/ilse31/base-repo-be-go/internal/modules/auth/domain"
 	usermodule "github.com/ilse31/base-repo-be-go/internal/modules/user"
 	userdomain "github.com/ilse31/base-repo-be-go/internal/modules/user/domain"
+	appmiddleware "github.com/ilse31/base-repo-be-go/internal/presentation/middleware"
 	"github.com/ilse31/base-repo-be-go/pkg/jwt"
 	"github.com/ilse31/base-repo-be-go/pkg/mailer"
 )
@@ -29,25 +30,30 @@ type Deps struct {
 	Mailer           mailer.Mailer
 	FrontendResetURL string
 	Validator        *validator.Validate
+	IsProduction     bool
 }
 
 // Container holds the assembled bounded-context modules.
 type Container struct {
-	User *usermodule.Module
-	Auth *authmodule.Module
+	User       *usermodule.Module
+	Auth       *authmodule.Module
+	jwtManager *jwt.JWTManager
 }
 
 // New builds every module from the provided dependencies.
 func New(deps Deps) *Container {
 	return &Container{
-		User: usermodule.New(deps.UserRepo, deps.Validator),
-		Auth: authmodule.New(deps.UserRepo, deps.AuthRepo, deps.JWTManager, deps.Mailer, deps.FrontendResetURL, deps.Validator),
+		User:       usermodule.New(deps.UserRepo, deps.Validator),
+		Auth:       authmodule.New(deps.UserRepo, deps.AuthRepo, deps.JWTManager, deps.Mailer, deps.FrontendResetURL, deps.Validator, deps.IsProduction),
+		jwtManager: deps.JWTManager,
 	}
 }
 
 // RegisterRoutes mounts all module routes under /api/v1 on the echo instance.
 func (c *Container) RegisterRoutes(e *echo.Echo) {
 	v1 := e.Group("/api/v1")
+	authMw := appmiddleware.JWTAuth(c.jwtManager)
+
 	c.Auth.RegisterRoutes(v1.Group("/auth"))
-	c.User.RegisterRoutes(v1.Group("/users"))
+	c.User.RegisterRoutes(v1.Group("/users"), authMw)
 }

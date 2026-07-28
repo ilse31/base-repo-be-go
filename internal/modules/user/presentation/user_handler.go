@@ -35,6 +35,18 @@ type UpdateUserRequest struct {
 	Name string `json:"name" validate:"required"`
 }
 
+// CreateUser godoc
+// @Summary Create a new user
+// @Description Creates a new user record
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateUserRequest true "Create User Payload"
+// @Success 201 {object} response.Body "user created successfully"
+// @Failure 400 {object} apperrors.AppError "validation / bad request error"
+// @Failure 401 {object} apperrors.AppError "unauthorized"
+// @Router /users [post]
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	var req CreateUserRequest
 	if err := c.Bind(&req); err != nil {
@@ -57,6 +69,17 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 	return response.Created(c, "user created successfully", user)
 }
 
+// GetUser godoc
+// @Summary Get user by ID
+// @Description Retrieves a user details by unique ID
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} response.Body "user details"
+// @Failure 400 {object} apperrors.AppError "bad request"
+// @Failure 404 {object} apperrors.AppError "user not found"
+// @Router /users/{id} [get]
 func (h *UserHandler) GetUser(c echo.Context) error {
 	id := c.Param("id")
 	if id == "" {
@@ -71,6 +94,19 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 	return response.OK(c, user)
 }
 
+// UpdateUser godoc
+// @Summary Update user
+// @Description Updates user details by ID
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body UpdateUserRequest true "Update User Payload"
+// @Success 200 {object} response.Body "user updated successfully"
+// @Failure 400 {object} apperrors.AppError "bad request"
+// @Failure 404 {object} apperrors.AppError "user not found"
+// @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	id := c.Param("id")
 	if id == "" {
@@ -99,6 +135,17 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 	return response.OKWithMessage(c, "user updated successfully", user)
 }
 
+// DeleteUser godoc
+// @Summary Delete user
+// @Description Removes user record by ID
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 204 "no content"
+// @Failure 400 {object} apperrors.AppError "bad request"
+// @Failure 404 {object} apperrors.AppError "user not found"
+// @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	id := c.Param("id")
 	if id == "" {
@@ -112,6 +159,16 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 	return response.NoContent(c)
 }
 
+// ListUsers godoc
+// @Summary List users
+// @Description Returns paginated list of users
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Param limit query int false "Limit" default(10)
+// @Param offset query int false "Offset" default(0)
+// @Success 200 {object} response.Body "list of users"
+// @Router /users [get]
 func (h *UserHandler) ListUsers(c echo.Context) error {
 	limit, offset := parsePagination(c.QueryParam("limit"), c.QueryParam("offset"))
 

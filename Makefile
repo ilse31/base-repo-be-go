@@ -1,12 +1,23 @@
-.PHONY: run build test tidy clean migrate-up migrate-down
+.PHONY: run dev build test tidy clean migrate-up migrate-down swagger
 
 # Run the application
 run:
 	go run cmd/api/main.go
 
+# Run the application with auto-reload (Air)
+dev:
+	air
+
 # Build the application
 build:
 	go build -o bin/api cmd/api/main.go
+
+# Generate Swagger API documentation
+swagger:
+	swag init -g cmd/api/main.go
+
+
+
 
 # Run tests
 test:
@@ -18,7 +29,8 @@ tidy:
 
 # Clean build artifacts
 clean:
-	rm -rf bin/
+	rm -rf bin/ tmp/ build-errors.log
+
 
 # Run migrations up
 migrate-up:

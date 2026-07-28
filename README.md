@@ -98,7 +98,13 @@ migrate -path migrations -database "postgres://user:password@localhost:5432/mydb
 
 ### Running the Application
 
-#### Using Makefile
+#### Using Makefile (Development with Auto-Reload)
+
+```bash
+make dev
+```
+
+#### Using Makefile (Standard Run)
 
 ```bash
 make run
@@ -116,6 +122,7 @@ go run cmd/api/main.go
 make build
 ./bin/api
 ```
+
 
 ## 📡 API Endpoints
 
@@ -263,11 +270,23 @@ curl -X DELETE http://localhost:8080/api/v1/users/{user-id}
 ### Available Commands
 
 ```bash
+make dev          # Run application with auto-reload (Air)
 make run          # Run the application
 make build        # Build the application
+make swagger      # Generate Swagger API documentation
 make test         # Run tests
 make tidy         # Tidy go.mod
 make clean        # Clean build artifacts
+```
+
+### 📖 API Documentation (Swagger)
+
+Interactive Swagger UI documentation is available at:
+`http://localhost:8080/swagger/index.html`
+
+To regenerate Swagger documentation after updating API annotations:
+```bash
+make swagger
 ```
 
 ### Adding a New Entity

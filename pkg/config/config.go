@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -18,8 +20,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port string
-	Env  string
+	Port           string
+	Env            string
+	AllowedOrigins []string
 }
 
 type DatabaseConfig struct {
@@ -83,8 +86,9 @@ func Load() (*Config, error) {
 
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("SERVER_PORT", "8080"),
-			Env:  getEnv("ENV", "development"),
+			Port:           getEnv("SERVER_PORT", "8080"),
+			Env:            getEnv("ENV", "development"),
+			AllowedOrigins: getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"*"}),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
@@ -128,9 +132,34 @@ func Load() (*Config, error) {
 	}, nil
 }
 
+func (c *Config) Validate() error {
+	if c.Server.Env == "production" {
+		if c.JWT.Secret == "your-secret-key-change-in-production" || len(c.JWT.Secret) < 32 {
+			return errors.New("JWT_SECRET is insecure for production (must be at least 32 characters and non-default)")
+		}
+	}
+	return nil
+}
+
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		parts := strings.Split(value, ",")
+		res := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				res = append(res, trimmed)
+			}
+		}
+		if len(res) > 0 {
+			return res
+		}
 	}
 	return defaultValue
 }

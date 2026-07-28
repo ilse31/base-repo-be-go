@@ -1,0 +1,434 @@
+basePath: /api/v1
+definitions:
+  apperrors.AppError:
+    type: object
+  apperrors.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  presentation.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  presentation.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  presentation.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  presentation.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  presentation.ResetPasswordRequest:
+    properties:
+      new_password:
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
+    type: object
+  presentation.UpdateUserRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  response.Body:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/response.ErrorBody'
+      message:
+        type: string
+      meta:
+        $ref: '#/definitions/response.Meta'
+      success:
+        type: boolean
+    type: object
+  response.ErrorBody:
+    properties:
+      code:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/apperrors.FieldError'
+        type: array
+      message:
+        type: string
+    type: object
+  response.Meta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: Reusable Go Echo REST API Template following Clean Architecture.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Go Clean Architecture API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends password reset link to user's email address if registered
+      parameters:
+      - description: Forgot Password Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: if email exists, reset link sent
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      summary: Forgot password request
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and returns access/refresh tokens in JSON and
+        HTTP-only cookies
+      parameters:
+      - description: Login Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: login successful
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      summary: Login user
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Clears access and refresh token cookies and invalidates refresh
+        token in Redis
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: logged out successfully
+          schema:
+            $ref: '#/definitions/response.Body'
+      summary: Logout user
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: Returns claims of current authenticated user from cookie/token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user info
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get authenticated user info
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      description: Rotates access and refresh tokens using valid refresh token cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: new tokens generated
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account with email, name, and password
+      parameters:
+      - description: Register Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: user registered successfully
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: validation / bad request error
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "409":
+          description: user already exists
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      summary: Register a new user
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets password using valid token
+      parameters:
+      - description: Reset Password Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: password reset successfully
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: invalid or expired token
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      summary: Reset password
+      tags:
+      - Auth
+  /users:
+    get:
+      description: Returns paginated list of users
+      parameters:
+      - default: 10
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: list of users
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user record
+      parameters:
+      - description: Create User Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: user created successfully
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: validation / bad request error
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Create a new user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Removes user record by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: no content
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - Users
+    get:
+      description: Retrieves a user details by unique ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user details
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Updates user details by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update User Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/presentation.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user updated successfully
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: bad request
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/apperrors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

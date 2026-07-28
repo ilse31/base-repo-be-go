@@ -26,6 +26,6 @@ func New(userRepo domain.UserRepository, v *validator.Validate) *Module {
 }
 
 // RegisterRoutes mounts the module's routes onto the given echo group.
-func (m *Module) RegisterRoutes(g *echo.Group) {
-	m.handler.RegisterRoutes(g)
+func (m *Module) RegisterRoutes(g *echo.Group, authMw echo.MiddlewareFunc) {
+	m.handler.RegisterRoutes(g, authMw)
 }
