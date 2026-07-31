@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -17,6 +18,7 @@ type Config struct {
 	Scheduler      SchedulerConfig
 	Mail           MailConfig
 	Observability  ObservabilityConfig
+	RateLimit      RateLimitConfig
 }
 
 type ServerConfig struct {
@@ -62,6 +64,13 @@ type MailConfig struct {
 	FromName         string
 	FrontendResetURL string
 	Enabled          bool
+}
+
+// RateLimitConfig configures the Redis-backed HTTP rate limiter: up to
+// Requests calls per identifier (client IP) within Window.
+type RateLimitConfig struct {
+	Requests int
+	Window   time.Duration
 }
 
 // ObservabilityConfig configures distributed tracing (OpenTelemetry) and
@@ -118,6 +127,10 @@ func Load() (*Config, error) {
 			FromName:         getEnv("MAIL_FROM_NAME", "No-Reply"),
 			FrontendResetURL: getEnv("MAIL_FRONTEND_RESET_URL", "http://localhost:3000/reset-password"),
 			Enabled:          getEnvAsBool("MAIL_ENABLED", false),
+		},
+		RateLimit: RateLimitConfig{
+			Requests: getEnvAsInt("RATE_LIMIT_REQUESTS", 20),
+			Window:   time.Duration(getEnvAsInt("RATE_LIMIT_WINDOW_SECONDS", 1)) * time.Second,
 		},
 		Observability: ObservabilityConfig{
 			ServiceName:      getEnv("OTEL_SERVICE_NAME", "base-repo-be-go"),

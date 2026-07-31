@@ -153,6 +153,7 @@ func main() {
 		},
 	}))
 	e.Use(middleware.Recover())
+	e.Use(middleware.Gzip())
 
 	// Security Middlewares: CORS, Secure Headers, Rate Limiter, and CSRF Protection
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
@@ -169,7 +170,7 @@ func main() {
 		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
 	}))
 
-	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+	e.Use(middleware.RateLimiter(mw.NewRedisRateLimiterStore(redisClient.Client, cfg.RateLimit.Requests, cfg.RateLimit.Window)))
 
 	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
 		CookieName:     "_csrf",
